@@ -1,0 +1,203 @@
+body {
+  background: #A9D9C3;
+}
+#register_form h1 {
+  text-align: center;
+}
+#register_form {
+  width: 37%;
+  margin: 100px auto;
+  padding-bottom: 30px;
+  border: 1px solid #918274;
+  border-radius: 5px;
+  background: white;
+}
+#register_form input {
+  width: 80%;
+  height: 35px;
+  margin: 5px 10%;
+  font-size: 1.1em;
+  padding: 4px;
+  font-size: .9em;
+}
+#reg_btn {
+  height: 35px;
+  width: 80%;
+  margin: 5px 10%;
+  color: white;
+  background: #3B5998;
+  border: none;
+  border-radius: 5px;
+}
+/*Styling for errors on form*/
+.form_error span {
+  width: 80%;
+  height: 35px;
+  margin: 3px 10%;
+  font-size: 1.1em;
+  color: #D83D5A;
+}
+.form_error input {
+  border: 1px solid #D83D5A;
+}
+
+/*Styling in case no errors on form*/
+.form_success span {
+  width: 80%;
+  height: 35px;
+  margin: 3px 10%;
+  font-size: 1.1em;
+  color: green;
+}
+.form_success input {
+  border: 1px solid green;
+}
+#error_msg {
+  color: red;
+  text-align: center;
+  margin: 10px auto;
+}
+In register.php, the last two lines specify the javascript files that are used in this application. First is JQuery which you can download from here, and there is also the script.js file where we will write our own JavaScript code. Place the jquery file in the root directory of your application and rename it to jquery-3.2.1.min.js.
+
+Now let's make the site dynamic both at the front end and backend. 
+
+Step 3:
+Create a script.js file and paste this code in it:
+
+$('document').ready(function(){
+ var username_state = false;
+ var email_state = false;
+ $('#username').on('blur', function(){
+  var username = $('#username').val();
+  if (username == '') {
+  	username_state = false;
+  	return;
+  }
+  $.ajax({
+    url: 'register.php',
+    type: 'post',
+    data: {
+    	'username_check' : 1,
+    	'username' : username,
+    },
+    success: function(response){
+      if (response == 'taken' ) {
+      	username_state = false;
+      	$('#username').parent().removeClass();
+      	$('#username').parent().addClass("form_error");
+      	$('#username').siblings("span").text('Sorry... Username already taken');
+      }else if (response == 'not_taken') {
+      	username_state = true;
+      	$('#username').parent().removeClass();
+      	$('#username').parent().addClass("form_success");
+      	$('#username').siblings("span").text('Username available');
+      }
+    }
+  });
+ });		
+  $('#email').on('blur', function(){
+ 	var email = $('#email').val();
+ 	if (email == '') {
+ 		email_state = false;
+ 		return;
+ 	}
+ 	$.ajax({
+      url: 'register.php',
+      type: 'post',
+      data: {
+      	'email_check' : 1,
+      	'email' : email,
+      },
+      success: function(response){
+      	if (response == 'taken' ) {
+          email_state = false;
+          $('#email').parent().removeClass();
+          $('#email').parent().addClass("form_error");
+          $('#email').siblings("span").text('Sorry... Email already taken');
+      	}else if (response == 'not_taken') {
+      	  email_state = true;
+      	  $('#email').parent().removeClass();
+      	  $('#email').parent().addClass("form_success");
+      	  $('#email').siblings("span").text('Email available');
+      	}
+      }
+ 	});
+ });
+
+ $('#reg_btn').on('click', function(){
+ 	var username = $('#username').val();
+ 	var email = $('#email').val();
+ 	var password = $('#password').val();
+ 	if (username_state == false || email_state == false) {
+	  $('#error_msg').text('Fix the errors in the form first');
+	}else{
+      // proceed with form submission
+      $.ajax({
+      	url: 'register.php',
+      	type: 'post',
+      	data: {
+      		'save' : 1,
+      		'email' : email,
+      		'username' : username,
+      		'password' : password,
+      	},
+      	success: function(response){
+      		alert('user saved');
+      		$('#username').val('');
+      		$('#email').val('');
+      		$('#password').val('');
+      	}
+      });
+ 	}
+ });
+});
+The first chunk of code is that part that is executed when the cursor leaves the username field of the input form. The second chunk is executed when the cursor leaves the email field and the last part of the code makes sure there is no error in the form and then submits the data to the server when the register button is clicked.
+
+Step 4:
+This is the last part of the code. After data has been submitted to the server, php code receives the information and does the necessary checks. 
+
+process.php:
+
+<?php 
+  $db = mysqli_connect('localhost', 'root', '', 'taken');
+  if (isset($_POST['username_check'])) {
+  	$username = $_POST['username'];
+  	$sql = "SELECT * FROM users WHERE username='$username'";
+  	$results = mysqli_query($db, $sql);
+  	if (mysqli_num_rows($results) > 0) {
+  	  echo "taken";	
+  	}else{
+  	  echo 'not_taken';
+  	}
+  	exit();
+  }
+  if (isset($_POST['email_check'])) {
+  	$email = $_POST['email'];
+  	$sql = "SELECT * FROM users WHERE email='$email'";
+  	$results = mysqli_query($db, $sql);
+  	if (mysqli_num_rows($results) > 0) {
+  	  echo "taken";	
+  	}else{
+  	  echo 'not_taken';
+  	}
+  	exit();
+  }
+  if (isset($_POST['save'])) {
+  	$username = $_POST['username'];
+  	$email = $_POST['email'];
+  	$password = $_POST['password'];
+  	$sql = "SELECT * FROM users WHERE username='$username'";
+  	$results = mysqli_query($db, $sql);
+  	if (mysqli_num_rows($results) > 0) {
+  	  echo "exists";	
+  	  exit();
+  	}else{
+  	  $query = "INSERT INTO users (username, email, password) 
+  	       	VALUES ('$username', '$email', '".md5($password)."')";
+  	  $results = mysqli_query($db, $query);
+  	  echo 'Saved!';
+  	  exit();
+  	}
+  }
+
+?>
